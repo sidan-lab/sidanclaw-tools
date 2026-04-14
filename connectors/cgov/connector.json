@@ -1,0 +1,11 @@
+{
+  "id": "cgov",
+  "name": "Cardano Onchain Governance",
+  "description": "Cardano blockchain governance on-chain data. Query proposals, DRep registrations, votes, and governance actions.",
+  "icon_url": "https://app.cgov.io/favicon.ico",
+  "mcp_url": "https://cgov-mcp-589811450826.asia-south1.run.app/mcp",
+  "auth_type": "none",
+  "author": "NOMOS",
+  "author_url": "https://app.cgov.io",
+  "tags": ["blockchain", "cardano", "governance"]
+}

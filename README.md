@@ -1,49 +1,162 @@
 # sidanclaw-tools
 
-Community connector registry for [sidanclaw](https://ai.sidan.io) — add your MCP server so every sidanclaw user can discover and connect it.
+Community connectors and skills for [sidanclaw](https://ai.sidan.io).
 
-## How it works
+```
+sidanclaw-tools/
+├── connectors/
+│   └── <name>/
+│       └── connector.json
+├── skills/
+│   └── <name>/
+│       ├── SKILL.md              # Required
+│       ├── references/           # Optional
+│       └── assets/               # Optional
+└── README.md
+```
 
-`registry.json` contains an array of connector entries. sidanclaw loads this file at boot and surfaces the connectors in **Settings > Connectors > Browse Connectors** under the Community section.
+---
 
-## Adding a connector
+## Skills
 
-1. Fork this repo
-2. Add your entry to the `connectors` array in `registry.json`
-3. Open a pull request
+Skills follow the [Agent Skills Spec](https://agentskills.io/specification). sidanclaw-specific extensions live under `metadata`.
 
-### Entry format
+### SKILL.md format
+
+```markdown
+---
+name: my-skill
+description: What this skill does and when to use it.
+license: MIT
+compatibility: Designed for sidanclaw
+metadata:
+  author: your-name
+  author_url: https://github.com/your-name
+  category: productivity
+  when_to_use: When the user asks for X
+  requires_connectors: gcal,gmail
+---
+
+Instructions the assistant follows when this skill is activated...
+```
+
+### Required fields
+
+| Field | Constraints |
+|---|---|
+| `name` | Lowercase, hyphens, max 64 chars. Must match directory name. |
+| `description` | What it does + when to use it. Max 1024 chars. |
+
+### Optional fields (Agent Skills Spec)
+
+| Field | Description |
+|---|---|
+| `license` | License name or reference to LICENSE.txt |
+| `compatibility` | Environment requirements (max 500 chars) |
+| `allowed-tools` | Space-separated pre-approved tool names |
+
+### sidanclaw metadata extensions
+
+| Key | Description |
+|---|---|
+| `metadata.author` | Author name |
+| `metadata.author_url` | Author URL |
+| `metadata.category` | `productivity`, `communication`, `research`, or `custom` |
+| `metadata.when_to_use` | When the model should invoke this skill |
+| `metadata.requires_connectors` | Comma-separated connector IDs (e.g. `gcal,gmail`) |
+
+### Example
+
+`skills/daily-briefing/SKILL.md`:
+
+```markdown
+---
+name: daily-briefing
+description: Morning summary of calendar, emails, and tasks. Use when the user asks for a briefing or daily agenda.
+metadata:
+  author: sidanclaw
+  category: productivity
+  when_to_use: When the user asks for a briefing, morning summary, or daily agenda
+  requires_connectors: gcal,gmail
+---
+
+When activated, gather the user's day at a glance:
+
+1. Check today's calendar events
+2. Check unread important emails from the last 12 hours
+3. Present as a concise summary with 3-5 bullet points
+```
+
+### Progressive disclosure
+
+1. **Listing** (~100 tokens): `name` + `description` shown each turn
+2. **Activation** (< 5000 tokens): Full body loaded when the model invokes `useSkill`
+3. **Resources**: Files in `references/` loaded on demand
+
+Keep `SKILL.md` under 500 lines.
+
+---
+
+## Connectors
+
+Connectors are [MCP](https://modelcontextprotocol.io) servers that add external service integrations.
+
+### connector.json format
 
 ```json
 {
-  "id": "your-tool-id",
-  "name": "Your Tool Name",
-  "description": "Short description of what it does.",
+  "id": "my-connector",
+  "name": "My Connector",
+  "description": "What this connector provides.",
   "icon_url": "https://example.com/icon.png",
-  "mcp_url": "https://your-mcp-server.com/mcp",
+  "mcp_url": "https://example.com/mcp",
   "auth_type": "none",
-  "author": "Your Name",
-  "author_url": "https://your-site.com",
-  "tags": ["category", "tags"]
+  "author": "your-name",
+  "author_url": "https://github.com/your-name",
+  "tags": ["category", "domain"]
 }
 ```
 
+### Fields
+
 | Field | Required | Description |
 |---|---|---|
-| `id` | yes | Unique lowercase identifier |
-| `name` | yes | Display name |
-| `description` | yes | What the connector does (keep it under ~100 chars) |
-| `mcp_url` | yes | Your MCP server endpoint |
-| `auth_type` | yes | `"none"`, `"oauth"`, or `"api_key"` |
-| `icon_url` | no | URL to a square icon (recommended) |
-| `author` | no | Author or org name |
-| `author_url` | no | Link to author's site |
-| `tags` | no | Array of category tags for search/filtering |
+| `id` | Yes | Unique identifier. Must match directory name. |
+| `name` | Yes | Display name |
+| `description` | Yes | What the connector provides |
+| `mcp_url` | Yes | MCP server endpoint URL |
+| `auth_type` | Yes | `none`, `oauth`, or `api_key` |
+| `icon_url` | No | Square icon URL (min 64x64) |
+| `author` | No | Author or organization name |
+| `author_url` | No | Author URL |
+| `tags` | No | Category tags for filtering |
 
-## Requirements
+### Example
 
-- Your MCP server must be publicly reachable at the provided `mcp_url`
-- The endpoint must follow the [Model Context Protocol](https://modelcontextprotocol.io) spec
+`connectors/cgov/connector.json`:
+
+```json
+{
+  "id": "cgov",
+  "name": "Cardano Onchain Governance",
+  "description": "Query proposals, DRep registrations, votes, and governance actions.",
+  "icon_url": "https://app.cgov.io/favicon.ico",
+  "mcp_url": "https://cgov-mcp-589811450826.asia-south1.run.app/mcp",
+  "auth_type": "none",
+  "author": "NOMOS",
+  "author_url": "https://app.cgov.io",
+  "tags": ["blockchain", "cardano", "governance"]
+}
+```
+
+---
+
+## Contributing
+
+1. Fork this repo
+2. Add your connector or skill in the appropriate directory
+3. Follow the specs above
+4. Submit a PR
 
 ## License
 
