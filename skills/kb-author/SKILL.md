@@ -43,12 +43,12 @@ Parser: `packages/core/src/knowledge/parser.ts`. Deterministic — no LLM. Alway
 
 ```yaml
 ---
-title: Vault Fees           # → entries.title (falls back to first H1, then filename)
+title: Deploy Rollback      # → entries.title (falls back to first H1, then filename)
 description: One line...    # → entries.summary (shown in listings — highest-leverage field)
-tags: [product, vault]      # → entries.tags (FTS B-band weight)
+tags: [runbook, deploy]     # → entries.tags (FTS B-band weight)
 sensitivity: internal       # → entries.sensitivity (default when absent: internal)
 related:                    # → entries.related_ids after wikilink resolution
-  - products/vault/index
+  - runbooks/deploy/index
 ---
 ```
 
@@ -56,8 +56,8 @@ Other keys go to `entries.metadata` JSONB (`status`, `owner`, `last_reviewed`, `
 
 **Paths:**
 
-- `products/vault/fees.md` → path `products/vault/fees`
-- `products/vault/index.md` → path `products/vault` (index is the directory's entry)
+- `runbooks/deploy/rollback.md` → path `runbooks/deploy/rollback`
+- `runbooks/deploy/index.md` → path `runbooks/deploy` (index is the directory's entry)
 - Lowercase-kebab conventional; path lookup is case-sensitive.
 
 **One file = one entry.** Split sections into siblings when they want their own URL.
@@ -96,18 +96,18 @@ See `docs/architecture/platform/sensitivity.md` for the full design.
 Related refs come from three places: `frontmatter.related[]`, body wikilinks, body markdown links.
 
 ```markdown
-[[products/vault/fees]]              # absolute
-[[../vault/fees]]                    # relative from this file
-[[vault-fees]]                       # bare — filename search
-[[products/vault/index|Vault]]       # display alias
-[schedule](../vault/fees.md)         # standard link — also a related ref
+[[runbooks/deploy/rollback]]           # absolute
+[[../deploy/rollback]]                 # relative from this file
+[[rollback]]                           # bare — filename search
+[[runbooks/deploy/index|Deploy]]       # display alias
+[rollback steps](../deploy/rollback.md)   # standard link — also a related ref
 ```
 
 External URLs are ignored for related-ref purposes. Source-code paths (`packages/core/src/...`) stay as prose — do **not** wrap in wikilinks.
 
 ## The `index.md` convention
 
-Every directory has one. It's the entry browsers land on, the canonical "what is this folder" answer, and the natural target for `[[products/vault]]`. A good index lists sub-entries with one-line hooks. Without it, browsers see children but no orientation.
+Every directory has one. It's the entry browsers land on, the canonical "what is this folder" answer, and the natural target for `[[runbooks/deploy]]`. A good index lists sub-entries with one-line hooks. Without it, browsers see children but no orientation.
 
 ## Ingest workflow
 
@@ -155,7 +155,7 @@ Every entry needs at minimum: `title`, `description`, `tags`, `sensitivity`. For
 
 - **Title** — scannable; no numeric prefix. Reuse first H1 when good; rewrite otherwise.
 - **Description** — one line, ≤200 chars. Highest-leverage field: it's what `browseKnowledge` shows. Lead with the *thing*, then the *what-for*. Avoid "This document describes...".
-- **Tags** — 3-6. Mix kind (`spec`, `runbook`, `reference`, `decision`, `glossary`) + domain (`vault`, `telegram`). Match `meta/tags.md`.
+- **Tags** — 3-6. Mix kind (`spec`, `runbook`, `reference`, `decision`, `glossary`) + domain (`auth`, `billing`, `infra`). Match `meta/tags.md`.
 - **Sensitivity** — see the tier rules above. Don't let omission be a silent decision.
 
 Optional: `status` (`stable` / `proposed` / `deprecated`), `owner`, `last_reviewed`, `source`.
@@ -174,7 +174,7 @@ Optional: `status` (`stable` / `proposed` / `deprecated`), `owner`, `last_review
 Two entries pay for themselves many times over. The template ships starters — adapt them.
 
 - **`meta/sensitivity.md`** — team's tier policy. Which folders default to which tier. Prevents drift.
-- **`meta/tags.md`** — canonical tag vocabulary. Prevents `vault` vs `vaults` vs `vault-product`.
+- **`meta/tags.md`** — canonical tag vocabulary. Prevents near-duplicates drifting apart (`deploy` vs `deploys` vs `deployment`).
 
 ### 6. Audit
 
