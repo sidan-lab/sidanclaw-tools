@@ -1,19 +1,18 @@
 # sidanclaw-tools
 
-Community connectors and skills for [sidanclaw](https://ai.sidan.io).
+Community connectors, skills, and CLIs for [sidanclaw](https://ai.sidan.io).
 
 ```
 sidanclaw-tools/
-├── connectors/
-│   └── <name>/
-│       └── connector.json
-├── skills/
-│   └── <name>/
-│       ├── SKILL.md              # Required
-│       ├── references/           # Optional
-│       └── assets/               # Optional
+├── connectors/              # MCP servers with connector.json
+├── skills/                  # Agent Skills Spec skills
+├── cli/                     # @sidanclaw/kb — KB authoring CLI
 └── README.md
 ```
+
+## Related repositories
+
+- [`sidan-lab/sidanclaw-kb-template`](https://github.com/sidan-lab/sidanclaw-kb-template) — GitHub template for a team knowledge base repo. Use **Use this template** or pair with `npx @sidanclaw/kb init`.
 
 ---
 
@@ -151,10 +150,28 @@ Connectors are [MCP](https://modelcontextprotocol.io) servers that add external 
 
 ---
 
+## CLIs
+
+### `@sidanclaw/kb`
+
+Initialize and migrate sidanclaw knowledge bases.
+
+```
+npx @sidanclaw/kb init my-team-kb                       # interactive wizard
+npx @sidanclaw/kb init --from ./docs --out ./team-kb    # migrate an existing markdown tree
+npx @sidanclaw/kb lint ./team-kb                        # audit hygiene (v0.2)
+```
+
+The migrator walks a source tree, generates frontmatter, infers `sensitivity` per file from path heuristics, and writes a `MIGRATION_REPORT.md` listing every decision so you can spot-check before pushing. Pairs with the [`kb-author`](skills/kb-author) skill (the model uses the skill for authoring guidance) and the [`sidanclaw-kb-template`](https://github.com/sidan-lab/sidanclaw-kb-template) repo (the wizard clones it via `gh` when available).
+
+See [`cli/README.md`](cli/README.md) for full docs and [`cli/src`](cli/src) for the source.
+
+---
+
 ## Contributing
 
 1. Fork this repo
-2. Add your connector or skill in the appropriate directory
+2. Add your connector, skill, or CLI in the appropriate directory
 3. Follow the specs above
 4. Submit a PR
 
