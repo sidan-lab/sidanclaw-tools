@@ -1,12 +1,12 @@
 ---
 name: luma-discover
-description: Discover upcoming events on Luma (lu.ma) by city, category, or topic. Use when the user asks for meetups, events to attend, or community gatherings — especially in tech, AI, climate, crypto, arts, fitness, or food/drink. Returns event names with registration URLs the user opens to RSVP.
+description: Discover upcoming events on Luma (lu.ma) by city, category, or topic. Use when the user asks for meetups, events to attend, or community gatherings — especially in tech, AI, climate, crypto, arts, fitness, or food/drink. Returns event names with registration URLs the user opens to RSVP. Supports both a curated top-picks answer (default) and a comprehensive full-list mode when the user pushes for breadth.
 license: MIT
 compatibility: Designed for sidanclaw
 metadata:
   author: sidanclaw
   category: research
-  when_to_use: When the user asks "any AI/climate/crypto/tech meetups in <city>?", "what's happening on Luma this week?", "find events about <topic>", or otherwise wants to discover registerable community events. Skip when the user is asking about events they already RSVPed to (those flow through Google Calendar).
+  when_to_use: When the user asks "any AI/climate/crypto/tech meetups in <city>?", "what's happening on Luma this week?", "find events about <topic>", wants a "full list" / "everything on" for a city+topic, or asks for "more" after a curated answer. Skip when the user is asking about events they already RSVPed to (those flow through Google Calendar).
 ---
 
 # Luma Event Discovery
@@ -114,20 +114,39 @@ Three categories — Arts, Fitness, Wellness — have non-slug `api_id`s that ch
 
 ### Step 1 — Parse the request
 
-Identify three things from the user's message:
+Identify four things from the user's message:
 
 1. **City** (if mentioned) — match against the catalog above.
 2. **Category/topic** (if mentioned) — match against the catalog above.
 3. **Free-text refinement** (e.g. "Rust", "for beginners", "in Mandarin") — keep this aside for client-side filtering.
+4. **Mode** — `curated` (default) vs `comprehensive`. Pick `comprehensive` when any of these signals are present:
+   - Explicit breadth cues: "full list", "all", "everything", "complete", "comprehensive", "entire", "every", "list them all", "show me all".
+   - Follow-up after a prior curated answer in this conversation: "more", "what else", "keep going", "anything else", "next page", "continue", "expand".
+   - The user asking to compare or scan for planning ("I want to plan my week", "help me pick", "show me what's on").
+
+   Default to `curated` for first-turn requests like "any AI meetups in Singapore?" — users scanning for one-or-two-to-RSVP are better served by a short, highly readable list.
 
 If neither city nor category is provided and the user isn't asking globally, ASK before fetching. A bare "find me events" returns a worldwide grab bag that wastes a turn.
 
 ### Step 2 — Build the URL
 
-Construct the API URL with `pagination_limit=15` (good default) plus any resolved `discover_place_api_id` and `discover_category_api_id`. Example:
+Choose `pagination_limit` from mode:
+
+- `curated` → `pagination_limit=15`
+- `comprehensive` → `pagination_limit=45` (the soft cap — bigger values are silently clamped)
+
+If this is a **pagination follow-up** (user already saw page 1 and is asking for "more" / "next page"), also append `pagination_cursor=<next_cursor>` from the prior response. The cursor is opaque — pass it verbatim.
+
+Example (comprehensive, page 1):
 
 ```
-https://api.lu.ma/discover/get-paginated-events?pagination_limit=15&discover_place_api_id=discplace-mUbtdfNjfWaLQ72&discover_category_api_id=cat-ai
+https://api.lu.ma/discover/get-paginated-events?pagination_limit=45&discover_place_api_id=discplace-mUbtdfNjfWaLQ72&discover_category_api_id=cat-ai
+```
+
+Example (comprehensive, page 2):
+
+```
+https://api.lu.ma/discover/get-paginated-events?pagination_limit=45&pagination_cursor=<token>&discover_place_api_id=discplace-mUbtdfNjfWaLQ72&discover_category_api_id=cat-ai
 ```
 
 ### Step 3 — Fetch via `urlReader`
@@ -160,7 +179,9 @@ For "today" / "tomorrow" / "this weekend", adjust the window accordingly. If the
 
 **Free-text refinement.** If the user gave one (e.g. "Rust", "for beginners"), filter by case-insensitive substring match over `event.name` and `calendar.name`.
 
-Present the top 5–8 events as a clean list:
+Pick the output shape from mode:
+
+**Curated mode — top 5–8 events, rich format:**
 
 ```
 📅 [Event Name]
@@ -169,9 +190,33 @@ Present the top 5–8 events as a clean list:
    🔗 https://lu.ma/[event.url]
 ```
 
+**Comprehensive mode — every entry that survived filtering, compact one-line format:**
+
+```
+📅 [day/time] — [Event Name] — [city or "online"] — [host] — https://lu.ma/[event.url]
+```
+
+Group by day when the range spans more than ~3 days (e.g. `### Thu May 1` headers). Skip group headers for short windows like "this weekend".
+
 Always include the full `https://lu.ma/<event.url>` URL — that is the user's registration link. Do not shorten.
 
-After the list, offer follow-ups: "Want me to filter to a specific topic?" or "More results from this list?"
+**Closing offer — match it to the mode and the pagination state:**
+
+- After a **curated** answer: "Want the full list, narrower by topic/date, or a different city?"
+- After a **comprehensive** answer where `has_more: true`: "That's page 1 (N events). Want the next page, or should I narrow this down?"
+- After a **comprehensive** answer where `has_more: false`: "That's everything on Luma matching your filters. Want to widen the city/topic or try a neighbouring category?"
+
+### Step 4b — Handle pagination follow-ups
+
+When the user asks for "more" / "next page" / "keep going" after a comprehensive answer:
+
+1. Reuse the exact same filters from the prior fetch (same `discover_place_api_id` and `discover_category_api_id`).
+2. Append `pagination_cursor=<next_cursor>` from the prior response.
+3. Keep `pagination_limit=45`.
+4. Present in the same compact format; continue any day grouping from the previous message (don't restart the day headers mid-stream).
+5. Stop when `has_more: false` — tell the user that was the last page.
+
+If the user pushes past ~3 pages without narrowing, suggest adding a filter ("There are a lot — want me to narrow to AI or to this weekend?"). The goal is a useful answer, not a firehose.
 
 ### Step 5 — webSearch fallback
 
@@ -179,7 +224,7 @@ If the API path fails, call `webSearch({ query: "site:lu.ma <topic> <city> 2026"
 
 ## Output shape — what to tell the user
 
-For each event include: name, location (city or "online"), start time in the user's timezone if you know it (otherwise the event's timezone), host name(s), and the URL. Keep guest count if it's notable (e.g. "143 going" signals a high-demand event).
+For each event include: name, location (city or "online"), start time in the user's timezone if you know it (otherwise the event's timezone), host name(s), and the URL. In curated mode, keep guest count if it's notable (e.g. "143 going" signals a high-demand event); in comprehensive mode, drop guest count to keep lines scannable.
 
 Be honest about what you couldn't resolve. If the user said "Lisbon" and you couldn't find it in the catalog, say so, return unfiltered global results, and suggest they confirm the spelling or try a different city.
 
@@ -191,6 +236,8 @@ Be honest about what you couldn't resolve. If the user said "Lisbon" and you cou
 4. **Auto-RSVPing.** You cannot register the user. Always end with "tap the link to register" or similar — not "I've signed you up."
 5. **Forgetting the `https://` prefix.** `event.url` is just a slug like `m85abh0i`. The clickable link is `https://lu.ma/m85abh0i`.
 6. **Verifying capacity in real time.** `guest_count` reflects when the page was generated, which may be minutes-stale. Don't promise the user "20 spots left" — say "popular event, register soon" if the count is high.
+7. **Giving a curated 5–8 answer when the user asked for breadth.** Phrases like "full list", "show me all", "what else is on" mean comprehensive mode. Re-fetching with `pagination_limit=45` is cheap — one API call — and dumping 30+ events in the compact format is exactly what the user asked for. Don't pre-trim to "keep it tidy" when the user explicitly wants the full scan.
+8. **Dropping filters on pagination.** When handling a "more" follow-up, you must reuse the same `discover_place_api_id` and `discover_category_api_id` from the original fetch. The cursor alone does not carry filters — a bare `pagination_cursor` call against a different filter context returns junk.
 
 ## When to skip this skill
 
