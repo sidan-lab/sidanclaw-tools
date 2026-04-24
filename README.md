@@ -1,6 +1,6 @@
 # sidanclaw-tools
 
-Community connectors and skills for [sidanclaw](https://ai.sidan.io).
+Community connectors and skills for [sidanclaw](https://sidan.ai).
 
 ```
 sidanclaw-tools/
